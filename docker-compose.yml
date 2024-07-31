@@ -1,0 +1,84 @@
+version: "3.9"
+
+services:
+  backend:
+    image: backend
+    container_name: sy_backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      SPRING_DATASOURCE_URL : ${SPRING_DATASOURCE_URL}
+      MYSQL_USER : ${MYSQL_USER}
+      MYSQL_PASSWORD : ${MYSQL_PASSWORD}
+      CLOVA_CHAT : ${CLOVA_CHAT}
+      API_GATEWAY_KEY : ${API_GATEWAY_KEY}
+      API_KEY : ${API_KEY}
+      STT_CLIENT_ID : ${STT_CLIENT_ID}
+      CLIENT_SECRET : ${CLIENT_SECRET}
+      STT_URL : ${STT_URL}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+    networks:
+      - shine-year
+
+  redis:
+    container_name: redis
+    image: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - shine-year
+
+  frontend:
+    image: frontend
+    container_name: sy_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/frontend
+      - ./frontend/build:/frontend/dist
+      - /frontend/node_modules
+    tty: true
+    stdin_open: true
+    networks:
+      - shine-year
+
+
+  nginx:
+    container_name: nginx
+    restart: unless-stopped
+    build:
+      context: ./nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    expose:
+      - 80
+      - 443
+    volumes:
+      - ./frontend/build:/var/www/frontend
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/certificate.pem:/etc/nginx/certificate.pem
+      - ./nginx/private.key:/etc/nginx/private.key
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - shine-year
+
+volumes:
+  mysql_data:
+
+networks:
+  shine-year:
+    driver: bridge
